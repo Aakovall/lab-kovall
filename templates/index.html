@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-4 mb-4">Добро пожаловать в Электронную библиотеку</h1>
+        <p class="lead">Откройте для себя мир книг и знаний</p>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for book in books.items %}
+    <div class="col">
+        <div class="card h-100">
+            {% if book.cover %}
+            <img src="{{ url_for('get_cover', filename=book.cover.md5_hash) }}" 
+                 class="card-img-top" alt="Обложка книги {{ book.title }}">
+            {% else %}
+            <div class="card-img-top d-flex align-items-center justify-content-center bg-light">
+                <i class="bi bi-book text-muted" style="font-size: 5rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ book.title }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ book.author }}</h6>
+                <p class="card-text">
+                    <small class="text-muted">
+                        <i class="bi bi-person"></i> {{ book.author }}<br>
+                        <i class="bi bi-calendar"></i> {{ book.year }}<br>
+                        <i class="bi bi-star-fill text-warning"></i> {{ "%.2f"|format(book.avg_rating) }}/5.00
+                    </small>
+                </p>
+                <p class="card-text">{{ book.description|truncate(150) }}</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-primary">
+                        <i class="bi bi-info-circle"></i> Подробнее
+                    </a>
+                    {% if current_user.is_authenticated and current_user.role.name == 'Пользователь' %}
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addToCollectionModal{{ book.id }}">
+                        <i class="bi bi-plus-circle"></i> В подборку
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="d-flex flex-wrap gap-1">
+                    {% for genre in book.genres %}
+                    <span class="badge bg-secondary">{{ genre.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated and current_user.role.name == 'Пользователь' %}
+    <!-- Модальное окно для добавления в подборку -->
+    <div class="modal fade" id="addToCollectionModal{{ book.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить в подборку</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('add_to_collection', book_id=book.id) }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="collection_id" class="form-label">Выберите подборку</label>
+                            <select class="form-select" name="collection_id" required>
+                                <option value="">Выберите подборку...</option>
+                                {% for collection in current_user.collections %}
+                                <option value="{{ collection.id }}">{{ collection.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+{% if books.pages > 1 %}
+<nav aria-label="Навигация по страницам" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if books.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('index', page=books.prev_num) }}">
+                <i class="bi bi-chevron-left"></i> Назад
+            </a>
+        </li>
+        {% endif %}
+
+        {% for page_num in books.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+            {% if page_num %}
+                {% if page_num == books.page %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('index', page=page_num) }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if books.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('index', page=books.next_num) }}">
+                Вперед <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %} 
